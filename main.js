@@ -15,6 +15,12 @@ var verbosed = {
     "О":"Загальний"
 };
 
+var stack
+	, stacked_data
+	, layers 
+	, area 
+	, svg 
+
 d3.csv('data_price_10_2014.csv', function(err, data) {
     var max_price = d3.max(data, function(d){return d.price});
 
@@ -22,9 +28,10 @@ d3.csv('data_price_10_2014.csv', function(err, data) {
         .key(function(d){return d.tipvg})
         .entries(data);
 
-    var stack = d3.layout.stack(); //.offset("wiggle"),
-        stacked_data = nested.map(function(l){return l.values.map(function(d){return {x: +d.price, y: +d.count, name: l.key}})}),
-        layers = stack(stacked_data);
+    stack = d3.layout.stack().offset("silhouette");
+	
+    stacked_data = nested.map(function(l){return l.values.map(function(d){return {x: +d.price, y: +d.count, name: l.key}})});
+    layers = stack(stacked_data);
 
     var x = d3.scale.linear()
         .domain([1, max_x - 1])
@@ -37,13 +44,13 @@ d3.csv('data_price_10_2014.csv', function(err, data) {
     var color = d3.scale.linear()
         .range(["#aad", "#556"]);
 
-    var area = d3.svg.area()
+    area = d3.svg.area()
         .x(function(d) { return x(d.x); })
         .y0(function(d) { return y(d.y0); })
         .y1(function(d) { return y(d.y0 + d.y); })
         .interpolate('basis');
 
-    var svg = d3.select("body").append("svg")
+    svg = d3.select("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
         .append('g')
@@ -53,9 +60,9 @@ d3.csv('data_price_10_2014.csv', function(err, data) {
 
     color = colorbrewer.RdYlBu['6'];
 
-    svg.selectAll("path")
+    svg.selectAll("path.area")
         .data(layers)
-        .enter().append("path")
+        .enter().append("path").attr('class', 'area')
         .attr("d", area)
         .style("fill", function(d,i) { return color[i]; });
 
@@ -78,8 +85,6 @@ d3.csv('data_price_10_2014.csv', function(err, data) {
 
     svg.append('g')
         .attr('class', 'y axis')
-        //.translate([])
-        //.translate([0, height])
         .call(y_axis)
         .append('text')
         .attr('y', '5em')
@@ -107,27 +112,41 @@ d3.csv('data_price_10_2014.csv', function(err, data) {
         .translate(function(d,i){return [25, i*25]})
         .attr("dy", '1.3em')
         .text(function(d){return d + " - " + verbosed[d]});
-
 });
 
-function legend() {
-
-
-
-
-
+function transition_offset(offset) {
+	stack.offset(offset)
+	
+	svg.selectAll("path.area")
+		.data(stack.offset(offset)(layers))
+		.transition()
+		.duration(2500)
+		.attr("d", area)
 }
 
-//
-//
-//function transition() {
-//    d3.selectAll("path")
-//        .data(function() {
-//            var d = layers1;
-//            layers1 = layers;
-//            return layers = d;
-//        })
-//        .transition()
-//        .duration(2500)
-//        .attr("d", area);
-//}
+function transition_interpolate(interpolate) {
+	area.interpolate(interpolate);
+	
+	svg.selectAll("path.area")
+		.attr("d", area)
+}
+
+var offset_div = d3.select('body').append('div.offset')
+	
+offset_div.append('p').text('stream algo:');
+offset_div.selectAll('button')
+	.data(['zero', 'wiggle', 'silhouette'])
+	.enter()
+	.append('button')
+	.text(function(d){return d})
+	.on('click', transition_offset);
+
+var interpolation_div = d3.select('body').append('div.interpolate')	;
+
+interpolation_div.append('p').text('interpolation:');
+interpolation_div.selectAll('button')
+	.data(['basis', 'linear', 'step', 'cardinal', 'monotone'])
+	.enter()
+	.append('button')
+	.text(function(d){return d})
+	.on('click', transition_interpolate);

@@ -22,7 +22,7 @@ d3.csv('data_price_10_2014.csv', function(err, data) {
         .key(function(d){return d.tipvg})
         .entries(data);
 
-    var stack = d3.layout.stack().offset("wiggle"),
+    var stack = d3.layout.stack(); //.offset("wiggle"),
         stacked_data = nested.map(function(l){return l.values.map(function(d){return {x: +d.price, y: +d.count, name: l.key}})}),
         layers = stack(stacked_data);
 

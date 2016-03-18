@@ -27,6 +27,12 @@ d3.csv('data_price_10_2014.csv', function(err, data) {
     var nested = d3.nest()
         .key(function(d){return d.tipvg})
         .entries(data);
+		
+	var summary = d3.nest()
+        .key(function(d){return d.tipvg})
+		.rollup(function(values){return d3.sum(values, function(v){return v.count})})
+        .entries(data)
+		.map(function(d){return {key:d.key, sum: d.values}});
 
     stack = d3.layout.stack().offset("silhouette");
 	
@@ -87,17 +93,21 @@ d3.csv('data_price_10_2014.csv', function(err, data) {
         .attr('class', 'y axis')
         .call(y_axis)
         .append('text')
-        .attr('y', '5em')
-        .style('font-size', '14px')
+        .attr('y', '2em')
+        .style('font-size', '10px')
         .tspans(["Площі - відповідають сумам доходу від продажу кожного типу квитка," ,"їх можна порівнювати між собою", " ", "Висота смуг - сума отримана в результаті продажу квитка відповідного типу"], 18)
-        .attr('dx', 270);
+        .attr('dx', 200);
 
 
+	var legend_x = d3.scale.linear()
+        .domain([0, d3.max(summary, function(d){return d.sum})])
+        .range([0, 200]);
+		
     var legendItem = svg.append('g')
         .attr('class', 'legend')
-        .translate([width - 40, 20])
+        .translate([width - 20, 20])
         .selectAll("g.legendItem")
-        .data(nested.map(function(d){return d.key}))
+        .data(summary)
         .enter()
         .append('g')
         .attr('class', 'legendItem');
@@ -105,13 +115,28 @@ d3.csv('data_price_10_2014.csv', function(err, data) {
     legendItem.append('rect')
         .style('fill', function(d,i){return color[i]})
         .attr('y', function(d,i){return i*25})
-        .attr('width', 20)
+        .attr('x', function(d){return - legend_x(d.sum)})
+		.attr('width', function(d){return legend_x(d.sum)})
         .attr('height', 20);
 
     legendItem.append('text')
+        .translate(function(d,i) {return [5, i*25]})
+        .attr("dy", '1.3em')
+        .text(function(d) {return d.key})
+		.style('fill', function(d,i){return color[i]});
+		
+	legendItem.append('text')
         .translate(function(d,i){return [25, i*25]})
         .attr("dy", '1.3em')
-        .text(function(d){return d + " - " + verbosed[d]});
+        .text(function(d){return " - " + verbosed[d.key]});
+		
+	legendItem.append('text')
+		.attr('x', function(d){return - legend_x(d.sum)})
+		.attr('y', function(d,i){return i*25})
+		.attr("dy", '1.3em')
+		.attr("dx", '-.7em')
+		.attr('text-anchor', 'end')
+		.text(function(d){return d3.format('.2s')(d.sum)})
 });
 
 function transition_offset(offset) {
